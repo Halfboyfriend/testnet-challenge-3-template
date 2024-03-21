@@ -48,6 +48,13 @@ contract CCQueryUC is UniversalChanIbcApp {
         // 1. Encode the caller's address and the query string into a payload
         // 2. Set the timeout timestamp at 10h from now
         // 3. Call the IbcUniversalPacketSender to send the packet
+         bytes memory payload = abi.encode(msg.sender, "crossChainQuery");
+
+        uint64 timeoutTimestamp = uint64((block.timestamp + timeoutSeconds) * 1000000000);
+
+        IbcUniversalPacketSender(mw).sendUniversalPacket(
+            channelId, IbcUtils.toBytes32(destPortAddr), payload, timeoutTimestamp
+        );
 
         // Example of how to properly encode, set timestamp and send a packet can be found in XCounterUC.sol
     }
@@ -103,18 +110,17 @@ contract CCQueryUC is UniversalChanIbcApp {
      * @param packet the Universal packet encoded by the source and relayed by the relayer.
      * @param ack the acknowledgment packet encoded by the destination and relayed by the relayer.
      */
-    function onUniversalAcknowledgement(bytes32 channelId, UniversalPacket memory packet, AckPacket calldata ack)
-        external
-        override
-        onlyIbcMw
+     function onUniversalAcknowledgement(bytes32 channelId, UniversalPacket memory packet, AckPacket calldata ack)
+    external
+    override
+    onlyIbcMw
     {
-        // TODO - Implement onUniversalAcknowledgement to handle the received acknowledgment packet
-        // The packet should contain the secret message from the Base Contract at address: 0x528f7971cE3FF4198c3e6314AA223C83C7755bf7
-        // Steps:
-        // 1. Decode the counter from the ack packet
-        // 2. Emit a LogAcknowledgement event with the message
+        ackPackets.push(UcAckWithChannel(channelId, packet, ack));
 
-        // An example of how to properly decode and handle an ack packet can be found in XCounterUC.sol
+        // decode the secret from the ack packet
+        (string memory _ack_data) = abi.decode(ack.data, (string));
+
+        emit LogAcknowledgement(_ack_data);
     }
 
     /**
